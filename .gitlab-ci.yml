@@ -1,0 +1,82 @@
+stages:     
+  - build  
+  - deploy
+
+build-backend:     
+  stage: build
+  image: maven:latest
+  script:
+    - echo "Compiling the code..."
+    - cd backend     
+    - mvn clean install 
+    - echo "Finished building the app."
+    - pwd
+    - cd target
+    - ls -la
+  artifacts:
+        expire_in: 1 week
+        paths:
+            - /builds/ctd/proyecto-integrador-1022/0521-pt-c6/grupo-11/backend/target/consoleapp.jar
+  rules:
+    - changes:
+      - backend/**/*  
+build-frontend:     
+  stage: build
+  image: node:19-alpine3.15
+  script:
+    - echo "Compiling the code..."
+    - pwd
+    - cd front/digitalbooking
+    - npm install --legacy-peer-deps
+    - CI='' npm run build  
+    - pwd    
+    - ls -la
+  artifacts:
+        expire_in: 1 week
+        paths:
+            - /builds/ctd/proyecto-integrador-1022/0521-pt-c6/grupo-11/front/digitalbooking/build
+  rules:
+    - changes:
+      - frontend/**/*    
+deploy-backend:      
+  stage: deploy  
+  image: alpine:3.11
+  environment: production
+  before_script:
+        - apk update && apk add openssh-client bash
+        - mkdir -p ~/.ssh
+        - eval $(ssh-agent -s)
+        - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+        - touch ~/.ssh/config
+        - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+        - ssh-keyscan -H $DEPLOY_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+      - echo "Deploying started..."
+      - ssh ubuntu@$DEPLOY_SERVER_IP "sudo systemctl stop consoleapp.service"
+      - scp /builds/ctd/proyecto-integrador-1022/0521-pt-c6/grupo-11/backend/target/consoleapp.jar ubuntu@$DEPLOY_SERVER_IP:~/console-app/
+      - ssh ubuntu@$DEPLOY_SERVER_IP "sudo systemctl start consoleapp.service"
+      - echo "Finished deploying the app."
+  rules:
+    - changes:
+      - backend/**/*  
+deploy-frontend:
+  stage: deploy
+  image: node:alpine
+  before_script:
+    - apk update && apk add openssh-client bash    
+    - mkdir -p ~/.ssh
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+    - touch ~/.ssh/config
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    - ssh-keyscan -H $DEPLOY_SERVER_IP_FE >> ~/.ssh/known_hosts
+  script:
+    - cd /builds/ctd/proyecto-integrador-1022/0521-pt-c6/grupo-11/front/digitalbooking/
+    - npm install --legacy-peer-deps
+    - CI='' npm run build 
+    - scp -r ./build/ ubuntu@$DEPLOY_SERVER_IP_FE:/home/ubuntu/
+    - ssh ubuntu@$DEPLOY_SERVER_IP_FE "sudo rm -rf /var/www/html/*"
+    - ssh ubuntu@$DEPLOY_SERVER_IP_FE "sudo mv ./build/* /var/www/html/"
+  rules:
+    - changes:
+      - frontend/**/*

@@ -1,0 +1,15 @@
+-- Create table roles
+
+DROP TABLE IF EXISTS `0521PTC6N2db_GRUPO11`.`roles`;
+CREATE TABLE `0521PTC6N2db_GRUPO11`.`roles` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Inserts table roles
+LOCK TABLES `0521PTC6N2db_GRUPO11`.`roles` WRITE;
+INSERT INTO `0521PTC6N2db_GRUPO11`.`roles`(id, name) VALUES 
+();
+
+UNLOCK TABLES;
